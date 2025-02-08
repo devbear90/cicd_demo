@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: airflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    networks:
+      - ci-cd-net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - airflow-dags:/var/jenkins_dags
+    networks:
+      - ci-cd-net
+    restart: unless-stopped
+
+  airflow-webserver:
+    image: apache/airflow:2.7.0
+    container_name: airflow-webserver
+    depends_on:
+      - postgres
+      - airflow-scheduler
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__WEBSERVER__RBAC=True
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+      - _AIRFLOW_DB_MIGRATE=true
+    networks:
+      - ci-cd-net
+    restart: unless-stopped
+    command: >
+      bash -c "airflow db migrate && 
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
+      airflow webserver"
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.0
+    container_name: airflow-scheduler
+    depends_on:
+      - postgres
+    volumes:
+      - ./dags:/opt/airflow/dags
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    networks:
+      - ci-cd-net
+    restart: unless-stopped
+    command: airflow scheduler
+
+volumes:
+  postgres_data:
+  jenkins_data:
+  airflow-dags:
+
+networks:
+  ci-cd-net:
