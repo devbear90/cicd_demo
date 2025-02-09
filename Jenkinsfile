@@ -26,6 +26,22 @@ pipeline {
             }
         }
 
+        stage('Deploy DAGs') {
+            steps {
+                script {
+                    sh "docker cp dags/. ${AIRFLOW_CONTAINER}:${DAG_PATH}/"
+                }
+            }
+        }
+
+        stage('Restart Airflow Scheduler') {
+            steps {
+                script {
+                    sh "docker restart airflow-scheduler"
+                }
+            }
+        }
+
         // ... (a többi stage változatlan)
     }
 
