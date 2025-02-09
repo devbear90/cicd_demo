@@ -25,6 +25,7 @@ services:
       - jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket mount
       - airflow_dags:/var/jenkins_dags  # DAG-ok helye a Jenkins számára
+      - airflow_dags:/opt/airflow/dags  # Airflow konténer
     networks:
       - ci-cd-net
     restart: unless-stopped
@@ -44,7 +45,8 @@ services:
     ports:
       - "8081:8080"
     volumes:
-      - airflow_dags:/opt/airflow/dags   # DAG-ok mountolása
+      - airflow_dags:/var/jenkins_dags  # DAG-ok helye a Jenkins számára
+      - airflow_dags:/opt/airflow/dags  # Airflow konténer
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -68,7 +70,8 @@ services:
     depends_on:
       - postgres
     volumes:
-      - airflow_dags:/opt/airflow/dags
+      - airflow_dags:/var/jenkins_dags  # DAG-ok helye a Jenkins számára
+      - airflow_dags:/opt/airflow/dags  # Airflow konténer
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
