@@ -19,12 +19,14 @@ services:
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins
+    user: root  # Futás rootként, hogy elérje a Docker socketet
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - jenkins_data:/var/jenkins_home
       - airflow-dags:/var/jenkins_dags
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker elérés engedélyezése
     networks:
       - ci-cd-net
     restart: unless-stopped
@@ -50,7 +52,7 @@ services:
       - ci-cd-net
     restart: unless-stopped
     command: >
-      bash -c "airflow db migrate && 
+      bash -c "airflow db migrate &&
       airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
       airflow webserver"
 
