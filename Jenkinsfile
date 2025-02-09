@@ -2,26 +2,22 @@ pipeline {
     agent any
 
     environment {
-        DAG_PATH = "/opt/airflow/dags"
-        AIRFLOW_CONTAINER = "airflow-webserver"
+        // Airflow konténer neve és DAG elérési út
+        AIRFLOW_CONTAINER = "airflow-webserver"  // Ellenőrizd a konténer nevét!
+        DAG_PATH = "/opt/airflow/dags"          // Ellenőrizd, hogy ez a helyes elérési út!
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                script {
-                    try {
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: 'main']],
-                            extensions: [],
-                            userRemoteConfigs: [[url: 'https://github.com/devbear90/cicd_demo.git']]
-                        ])
-                    } catch (err) {
-                        echo "❌ Hiba a repository klónozásakor: ${err}"
-                        currentBuild.result = 'FAILURE'
-                        error("A build sikertelen")
-                    }
+                // Git repository klónozása (újrapróbálkozással)
+                retry(3) {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: 'main']],
+                        extensions: [[$class: 'CleanCheckout']], // Tiszta munkaterület
+                        userRemoteConfigs: [[url: 'https://github.com/devbear90/cicd_demo.git']]
+                    ])
                 }
             }
         }
@@ -29,28 +25,32 @@ pipeline {
         stage('Deploy DAGs') {
             steps {
                 script {
-                    sh "docker cp dags/. ${AIRFLOW_CONTAINER}:${DAG_PATH}/"
+                    // DAG fájlok másolása az Airflow konténerbe
+                    sh """
+                        docker cp ./dags/ ${AIRFLOW_CONTAINER}:${DAG_PATH}/
+                        echo "✅ DAG-ok sikeresen deployolva!"
+                    """
                 }
             }
         }
 
-        stage('Restart Airflow Scheduler') {
+        stage('Restart Scheduler (Optional)') {
             steps {
-                script {
-                    sh "docker restart airflow-scheduler"
-                }
+                // Airflow scheduler újraindítása (ha szükséges)
+                sh "docker restart airflow-scheduler"
             }
         }
-
-        // ... (a többi stage változatlan)
     }
 
     post {
+        always {
+            cleanWs() // Munkaterület automatikus törlése
+        }
         success {
-            echo "✅ DAG Deployment Succeeded!"
+            echo "🎉 CI/CD Sikeres!"
         }
         failure {
-            echo "❌ DAG Deployment Failed!"
+            echo "❌ CI/CD Sikertelen!"
         }
     }
 }
