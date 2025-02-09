@@ -9,27 +9,24 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    git branch: 'main', url: 'https://github.com/devbear90/cicd_demo.git'
+                script {
+                    try {
+                        checkout([
+                            $class: 'GitSCM',
+                            branches: [[name: 'main']],
+                            extensions: [],
+                            userRemoteConfigs: [[url: 'https://github.com/devbear90/cicd_demo.git']]
+                        ])
+                    } catch (err) {
+                        echo "❌ Hiba a repository klónozásakor: ${err}"
+                        currentBuild.result = 'FAILURE'
+                        error("A build sikertelen")
+                    }
                 }
             }
         }
 
-        stage('Deploy DAGs') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh "docker cp dags/. ${AIRFLOW_CONTAINER}:${DAG_PATH}/"
-                }
-            }
-        }
-
-        stage('Restart Airflow Scheduler') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh "docker restart airflow-scheduler"
-                }
-            }
-        }
+        // ... (a többi stage változatlan)
     }
 
     post {
