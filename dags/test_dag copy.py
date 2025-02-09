@@ -8,6 +8,6 @@ default_args = {
     'catchup': False
 }
 
-with DAG('test_dag', default_args=default_args, schedule_interval='@daily') as dag:
+with DAG('test_dag2', default_args=default_args, schedule_interval='@daily') as dag:
     start = DummyOperator(task_id='start')
 
