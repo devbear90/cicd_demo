@@ -9,8 +9,6 @@ services:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
-    ports:
-      - "5432:5432"
     networks:
       - ci-cd-net
     volumes:
@@ -19,28 +17,34 @@ services:
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins
-    user: root  # Futás rootként, hogy elérje a Docker socketet
+    user: root  # Root jogosultság szükséges a Docker-hez
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - jenkins_data:/var/jenkins_home
-      - airflow-dags:/var/jenkins_dags
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker elérés engedélyezése
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket mount
+      - airflow_dags:/var/jenkins_dags  # DAG-ok helye a Jenkins számára
     networks:
       - ci-cd-net
     restart: unless-stopped
+    # Docker telepítése a Jenkins konténerbe
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y docker.io &&
+        /usr/local/bin/jenkins.sh
+      "
 
   airflow-webserver:
     image: apache/airflow:2.7.0
     container_name: airflow-webserver
     depends_on:
       - postgres
-      - airflow-scheduler
     ports:
       - "8081:8080"
     volumes:
-      - ./dags:/opt/airflow/dags
+      - airflow_dags:/opt/airflow/dags   # DAG-ok mountolása
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -52,9 +56,11 @@ services:
       - ci-cd-net
     restart: unless-stopped
     command: >
-      bash -c "airflow db migrate &&
-      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
-      airflow webserver"
+      bash -c "
+        airflow db migrate &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
+        airflow webserver
+      "
 
   airflow-scheduler:
     image: apache/airflow:2.7.0
@@ -62,7 +68,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - ./dags:/opt/airflow/dags
+      - airflow_dags:/opt/airflow/dags
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -74,7 +80,7 @@ services:
 volumes:
   postgres_data:
   jenkins_data:
-  airflow-dags:
+  airflow_dags:
 
 networks:
   ci-cd-net:

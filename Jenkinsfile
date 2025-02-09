@@ -22,13 +22,14 @@ pipeline {
             }
         }
 
-        stage('Deploy DAGs') {
+         stage('Deploy DAGs') {
             steps {
                 script {
-                    // DAG fájlok másolása az Airflow konténerbe
+                    // DAG-ok másolása a dedikált volume-ba
                     sh """
-                        docker cp ./dags/ ${AIRFLOW_CONTAINER}:${DAG_PATH}/
-                        echo "✅ DAG-ok sikeresen deployolva!"
+                        rm -rf ${DAG_SOURCE_DIR}/*  # Régi DAG-ok törlése
+                        cp -r ./dags/* ${DAG_SOURCE_DIR}/
+                        echo "✅ DAG-ok deployolva a volume-ba!"
                     """
                 }
             }
