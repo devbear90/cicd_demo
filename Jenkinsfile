@@ -21,18 +21,28 @@ pipeline {
             }
         }
 
-        stage('Deploy DAGs') {
+       stage('Deploy DAGs') {
             steps {
                 script {
-                    // DAG-ok másolása a volume-ba
-                    sh """
-                        rm -rf ${env.DAG_SOURCE_DIR}/*  # Használd a ${env.VÁLTOZÓ} szintaxist!
-                        cp -r ./dags/* ${env.DAG_SOURCE_DIR}/
-                        echo "✅ DAG-ok deployolva!"
-                    """
+                sh """
+                    # Töröld a régi DAG-okat
+                    rm -rf ${env.DAG_SOURCE_DIR}/*
+                    
+                    # Másold át az új DAG-okat (abszolút útvonallal)
+                    cp -r ${WORKSPACE}/dags/* ${env.DAG_SOURCE_DIR}/
+                    
+                    # Ellenőrzés
+                    ls -la ${env.DAG_SOURCE_DIR}
+                """
                 }
             }
         }
+
+        stage('Restart Scheduler') {
+            steps {
+                sh "docker restart airflow-scheduler"
+            }
+}
     }
 
     post {
