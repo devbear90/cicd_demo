@@ -9,14 +9,15 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/devbear90/cicd_demo.git'
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    git branch: 'main', url: 'https://github.com/devbear90/cicd_demo.git'
+                }
             }
         }
 
         stage('Deploy DAGs') {
             steps {
-                script {
-                    // Másolja a DAG-okat az Airflow konténerbe
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     sh "docker cp dags/. ${AIRFLOW_CONTAINER}:${DAG_PATH}/"
                 }
             }
@@ -24,11 +25,19 @@ pipeline {
 
         stage('Restart Airflow Scheduler') {
             steps {
-                script {
-                    // Újraindítja az Airflow Scheduler-t, hogy betöltse az új DAG-okat
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     sh "docker restart airflow-scheduler"
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ DAG Deployment Succeeded!"
+        }
+        failure {
+            echo "❌ DAG Deployment Failed!"
         }
     }
 }
